@@ -29,7 +29,6 @@ import org.glassfish.grizzly.utils.BufferInputStream;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 
-import static me.cmoz.grizzly.protobuf.FixedHeaderProtobufFilter.HEADER_SIZE_ATTR;
 import static org.glassfish.grizzly.TransformationResult.createCompletedResult;
 import static org.glassfish.grizzly.TransformationResult.createErrorResult;
 import static org.glassfish.grizzly.TransformationResult.createIncompletedResult;
@@ -42,13 +41,15 @@ abstract class ProtobufDecoder extends AbstractTransformer<Buffer, MessageLite> 
 
     /** The error code for a failed protobuf parse of a message. */
     public static final int IO_FAILED_PROTOBUF_PARSE = 0;
+    /** The name of the decoder attribute for the size of the message. */
+    public static final String MESSAGE_SIZE_ATTR = "grizzly-protobuf-message-size";
 
     /** The base protocol buffers serialization unit. */
     private final MessageLite prototype;
     /** A table of known extensions, searchable by name or field number. */
     private final ExtensionRegistryLite extensionRegistry;
     /** The attribute for the size of the fixed header. */
-    protected final Attribute<Integer> headerSizeAttr;
+    protected final Attribute<Integer> messageSizeAttr;
 
     /**
      * A Protocol Buffers decoder, with registered extensions.
@@ -62,7 +63,7 @@ abstract class ProtobufDecoder extends AbstractTransformer<Buffer, MessageLite> 
             final ExtensionRegistryLite extensionRegistry) {
         this.prototype = prototype;
         this.extensionRegistry = extensionRegistry;
-        headerSizeAttr = attributeBuilder.createAttribute(HEADER_SIZE_ATTR);
+        messageSizeAttr = attributeBuilder.createAttribute(MESSAGE_SIZE_ATTR);
     }
 
     /** {@inheritDoc} */
@@ -70,14 +71,20 @@ abstract class ProtobufDecoder extends AbstractTransformer<Buffer, MessageLite> 
     protected TransformationResult<Buffer, MessageLite> transformImpl(
             final AttributeStorage storage, final Buffer input)
             throws TransformationException {
-        final Integer headerSize = headerSizeAttr.get(storage);
-        if (input.remaining() < headerSize) {
+        final Integer messageSize = messageSizeAttr.get(storage);
+        log.debug("messageSize={}", messageSize);
+
+        if (input.remaining() < messageSize) {
             return createIncompletedResult(input);
         }
 
+        log.debug("bufferRemaining={}", input.remaining());
+
         final int position = input.position();
+        log.debug("position={}", position);
+
         final BufferInputStream inputStream =
-                new BufferInputStream(input, position, (position + headerSize));
+                new BufferInputStream(input, position, (position + messageSize));
         final MessageLite message;
         try {
             if (extensionRegistry != null) {
