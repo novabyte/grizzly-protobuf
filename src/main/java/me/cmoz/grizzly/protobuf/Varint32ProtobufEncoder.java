@@ -25,10 +25,13 @@ import org.glassfish.grizzly.attributes.AttributeStorage;
 import org.glassfish.grizzly.memory.MemoryManager;
 import org.glassfish.grizzly.utils.BufferOutputStream;
 
+import java.io.IOException;
+
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
+import static org.glassfish.grizzly.TransformationResult.createCompletedResult;
+import static org.glassfish.grizzly.TransformationResult.createErrorResult;
 
 /**
  * Encodes Protocol Buffers messages to the output stream using a
@@ -39,7 +42,7 @@ import java.io.IOException;
 public class Varint32ProtobufEncoder extends AbstractTransformer<MessageLite, Buffer> {
 
     /** The error code for a failed write to the output stream. */
-    public static final int IO_FAILED_WRITE = 0;
+    public static final int IO_WRITE_ERROR = 0;
 
     /** {@inheritDoc} */
     @Override
@@ -48,26 +51,23 @@ public class Varint32ProtobufEncoder extends AbstractTransformer<MessageLite, Bu
             throws TransformationException {
         final MemoryManager memoryManager = obtainMemoryManager(storage);
         final BufferOutputStream outputStream = new BufferOutputStream(memoryManager);
-        final CodedOutputStream codedOutputStream = CodedOutputStream.newInstance(outputStream);
+        final CodedOutputStream codedOutputStream =
+                CodedOutputStream.newInstance(outputStream);
 
-        final int messageSize = input.toByteArray().length;
-        final int headerSize = CodedOutputStream.computeRawVarint32Size(messageSize);
-        log.debug("headerSize={}", headerSize);
-        log.debug("messageSize={}", messageSize);
-
+        final byte[] encodedMessage = input.toByteArray();
         try {
-            codedOutputStream.writeRawVarint32(messageSize);
+            log.debug("encodedMessageLength={}", encodedMessage.length);
+            codedOutputStream.writeRawVarint32(encodedMessage.length);
             codedOutputStream.flush();
-            input.writeTo(codedOutputStream);
+            outputStream.write(encodedMessage);
             outputStream.close();
         } catch (final IOException e) {
             final String msg = "Error writing protobuf message to output stream.";
             log.warn(msg, e);
-            return TransformationResult.createErrorResult(IO_FAILED_WRITE, msg);
+            return createErrorResult(IO_WRITE_ERROR, msg);
         }
 
-        final Buffer buffer = outputStream.getBuffer();
-        return TransformationResult.createCompletedResult(buffer, null);
+        return createCompletedResult(outputStream.getBuffer().flip(), null);
     }
 
     /** {@inheritDoc} */
