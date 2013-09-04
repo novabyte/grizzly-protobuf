@@ -16,22 +16,11 @@
 package me.cmoz.grizzly.protobuf;
 
 import com.google.protobuf.CodedOutputStream;
-import com.google.protobuf.MessageLite;
-import org.glassfish.grizzly.AbstractTransformer;
-import org.glassfish.grizzly.Buffer;
-import org.glassfish.grizzly.TransformationException;
-import org.glassfish.grizzly.TransformationResult;
-import org.glassfish.grizzly.attributes.AttributeStorage;
-import org.glassfish.grizzly.memory.MemoryManager;
 import org.glassfish.grizzly.utils.BufferOutputStream;
 
 import java.io.IOException;
 
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-
-import static org.glassfish.grizzly.TransformationResult.createCompletedResult;
-import static org.glassfish.grizzly.TransformationResult.createErrorResult;
 
 /**
  * Encodes Protocol Buffers messages to the output stream using a
@@ -39,48 +28,31 @@ import static org.glassfish.grizzly.TransformationResult.createErrorResult;
  * message.
  */
 @Slf4j
-public class Varint32ProtobufEncoder extends AbstractTransformer<MessageLite, Buffer> {
-
-    /** The error code for a failed write to the output stream. */
-    public static final int IO_WRITE_ERROR = 0;
+public class Varint32ProtobufEncoder extends AbstractProtobufEncoder {
 
     /** {@inheritDoc} */
     @Override
-    protected TransformationResult<MessageLite, Buffer> transformImpl(
-            final AttributeStorage storage, final @NonNull MessageLite input)
-            throws TransformationException {
-        final MemoryManager memoryManager = obtainMemoryManager(storage);
-        final BufferOutputStream outputStream = new BufferOutputStream(memoryManager);
+    public void writeHeader(
+            final BufferOutputStream outputStream, final int messageLength)
+            throws IOException {
+        if (outputStream == null) {
+            throw new IllegalArgumentException("'outputStream' cannot be null.");
+        }
+        if (messageLength < 0) {
+            throw new IllegalArgumentException("'messageLength' cannot be negative.");
+        }
+        log.debug("encodedMessageLength={}", messageLength);
+
         final CodedOutputStream codedOutputStream =
                 CodedOutputStream.newInstance(outputStream);
-
-        final byte[] encodedMessage = input.toByteArray();
-        try {
-            log.debug("encodedMessageLength={}", encodedMessage.length);
-            codedOutputStream.writeRawVarint32(encodedMessage.length);
-            codedOutputStream.flush();
-            outputStream.write(encodedMessage);
-            outputStream.close();
-        } catch (final IOException e) {
-            final String msg = "Error writing protobuf message to output stream.";
-            log.warn(msg, e);
-            return createErrorResult(IO_WRITE_ERROR, msg);
-        }
-
-        return createCompletedResult(outputStream.getBuffer().flip(), null);
+        codedOutputStream.writeRawVarint32(messageLength);
+        codedOutputStream.flush();
     }
 
     /** {@inheritDoc} */
     @Override
     public String getName() {
         return Varint32ProtobufEncoder.class.getName();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean hasInputRemaining(
-            final AttributeStorage storage, final MessageLite input) {
-        return (input != null);
     }
 
 }
