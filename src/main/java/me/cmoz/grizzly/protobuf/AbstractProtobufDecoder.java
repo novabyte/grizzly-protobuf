@@ -38,6 +38,21 @@ import static org.glassfish.grizzly.TransformationResult.createErrorResult;
 @Slf4j
 abstract class AbstractProtobufDecoder extends AbstractTransformer<Buffer, MessageLite> {
 
+    /** The result of runtime detection for the protobuf 2.5.+ parser. */
+    private static final boolean PROTOBUF_PARSER;
+
+    static {
+        boolean hasParser = false;
+        try {
+            MessageLite.class.getDeclaredMethod("getParserForType");
+            hasParser = true;
+        } catch (final Throwable t) {
+            log.info("Upgrade to protobuf version 2.5.+ for enhanced parsing.");
+        } finally {
+            PROTOBUF_PARSER = hasParser;
+        }
+    }
+
     /** The error code for a failed protobuf parse of a message. */
     public static final int IO_PROTOBUF_PARSE_ERROR = 0;
     /** The error code for a malformed header. */
@@ -109,11 +124,22 @@ abstract class AbstractProtobufDecoder extends AbstractTransformer<Buffer, Messa
             final int pos = input.position();
 
             if (extensionRegistry != null) {
-                message = prototype.getParserForType()
-                        .parseFrom(buf, pos, messageLength, extensionRegistry);
+                if (PROTOBUF_PARSER) {
+                    message = prototype.getParserForType()
+                            .parseFrom(buf, pos, messageLength, extensionRegistry);
+                } else {
+                    message = prototype.newBuilderForType()
+                            .mergeFrom(buf, pos, messageLength, extensionRegistry)
+                            .build();
+                }
             } else {
-                message = prototype.getParserForType()
-                        .parseFrom(buf, pos, messageLength);
+                if (PROTOBUF_PARSER) {
+                    message = prototype.getParserForType()
+                            .parseFrom(buf, pos, messageLength);
+                } else {
+                    message = prototype.newBuilderForType()
+                            .mergeFrom(buf, pos, messageLength).build();
+                }
             }
         } catch (final InvalidProtocolBufferException e) {
             final String msg = "Error decoding protobuf message from input stream.";
