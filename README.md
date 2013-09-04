@@ -42,10 +42,6 @@ It is recommended to run Gradle with the
 
 Grizzly-Protobuf is available on [Maven Central](http://search.maven.org/).
 
-If you're not using Maven (or a dependency resolver that's compatible with Maven
- repositories), you can download the JARs you need for your project from
- Maven Central.
-
 ```xml
 <dependency>
     <groupId>me.cmoz.grizzly</groupId>
@@ -53,6 +49,10 @@ If you're not using Maven (or a dependency resolver that's compatible with Maven
     <version>1.0.0</version>
 </dependency>
 ```
+
+If you're not using Maven (or a dependency resolver that's compatible with Maven
+ repositories), you can download the JARs you need for your project from
+ Maven Central.
 
 ### Filter Types ###
 
