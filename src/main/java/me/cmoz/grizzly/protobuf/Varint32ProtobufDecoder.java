@@ -17,6 +17,7 @@ package me.cmoz.grizzly.protobuf;
 
 import com.google.protobuf.CodedInputStream;
 import com.google.protobuf.ExtensionRegistryLite;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.MessageLite;
 import org.glassfish.grizzly.AbstractTransformer;
 import org.glassfish.grizzly.Buffer;
@@ -109,7 +110,7 @@ public class Varint32ProtobufDecoder extends AbstractTransformer<Buffer, Message
                 message = prototype.getParserForType()
                         .parseFrom(buf, pos, messageLength);
             }
-        } catch (final IOException e) {
+        } catch (final InvalidProtocolBufferException e) {
             final String msg = "Error decoding protobuf message from input stream.";
             log.warn(msg, e);
             return createErrorResult(IO_PROTOBUF_PARSE_ERROR, msg);
