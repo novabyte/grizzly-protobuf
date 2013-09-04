@@ -13,13 +13,48 @@ Code licensed under the [Apache License v2.0](http://www.apache.org/licenses/LIC
 ## Developer Notes ##
 
 The codebase requires the [Gradle](http://gradle.org) build tool at version
- `1.6+` and the Java compiler at version `1.6.0` or greater. The
- [Protocol Buffers](http://search.maven.org/#artifactdetails|com.google.protobuf|protobuf-java|2.5.0|bundle)
- dependency used is `2.5.0` (for improved parsing performance
- [see here](http://protobuf.googlecode.com/svn/trunk/CHANGES.txt)) although
- older versions are also supported.
+ `1.6+` and the Java compiler at version `1.6.0` or greater.
+
+The main external dependency for the project is [Grizzly NIO](http://grizzly.java.net/),
+ at `2.3.5` or greater and [Protobuf-Java](http://search.maven.org/#artifactdetails|com.google.protobuf|protobuf-java|2.5.0|bundle)
+ at `2.5.0` (for improved parsing performance [see here](http://protobuf.googlecode.com/svn/trunk/CHANGES.txt))
+ although older versions are also supported.
+
+For a full list of dependencies see the [build script](https://github.com/novabyte/grizzly-protobuf/blob/master/build.gradle).
+ All dependencies are downloaded by Gradle during the build process.
+
+### Building the codebase ###
+
+A list of all possible build targets can be displayed by Gradle with
+ `gradle tasks`.
+
+In a regular write-compile-test cycle use `gradle test`.
+
+A list of all project dependencies can be displayed by Gradle with
+ `gradle dependencies`.
+
+It is recommended to run Gradle with the
+ [Build Daemon](http://docs.codehaus.org/display/GRADLE/Gradle+Build+Daemon)
+ enabled to improve performance. e.g. `gradle --daemon` once the daemon is
+ running it can be stopped with `gradle --stop`.
 
 ## Usage ##
+
+Grizzly-Protobuf is available on [Maven Central](http://search.maven.org/).
+
+If you're not using Maven (or a dependency resolver that's compatible with Maven
+ repositories), you can download the JARs you need for your project from
+ Maven Central.
+
+```xml
+<dependency>
+    <groupId>me.cmoz.grizzly</groupId>
+    <artifactId>grizzly-protobuf</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+### Filter Types ###
 
 At the moment there are two filters to choose from:
 
