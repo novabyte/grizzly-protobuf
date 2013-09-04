@@ -50,6 +50,12 @@ public class FixedLengthProtobufDecoder extends AbstractProtobufDecoder {
             final ExtensionRegistryLite extensionRegistry,
             final int headerLength) {
         super(prototype, extensionRegistry);
+        if (headerLength < 0) {
+            throw new IllegalArgumentException("'headerLength' cannot be negative.");
+        }
+        if (headerLength > 8192) {
+            log.warn("Fixed length header size exceeds default buffer size.");
+        }
         this.headerLength = headerLength;
     }
 
