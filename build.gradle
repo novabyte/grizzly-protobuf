@@ -1,5 +1,6 @@
 /**
- * A Grizzly filter to process Google's Protocol Buffers serialization format.
+ * Grizzly NIO framework filters to process Google's Protocol Buffers serialized
+ * messages.
  */
 
 buildscript {
@@ -13,13 +14,16 @@ buildscript {
 
 apply plugin: 'java'
 apply plugin: 'protobuf'
+apply plugin: 'maven'
+apply plugin: 'signing'
 apply plugin: 'idea'
 apply plugin: 'eclipse'
 
-group   = 'me.cmoz.grizzly.protobuf'
-version = '0.0.1-SNAPSHOT'
+group   = 'me.cmoz.grizzly'
+version = '1.0.0-SNAPSHOT'
 
 def groovyVersion = 'groovy-2.1.6'
+def isReleaseVersion = !version.endsWith('SNAPSHOT')
 
 plugins.withType(JavaPlugin) {
     sourceCompatibility = 1.6
@@ -41,6 +45,7 @@ repositories {
 }
 
 configurations {
+    deployerJars
     provided
     testProvided { extendsFrom provided }
 }
@@ -52,6 +57,8 @@ sourceSets {
 
 dependencies {
     def slf4jVersion = '1.7.5'
+
+    deployerJars group: 'org.apache.maven.wagon', name: 'wagon-ssh', version: '2.4'
 
     provided group: 'org.projectlombok', name: 'lombok', version: '0.12.0'
     compile(
@@ -86,6 +93,81 @@ jar {
 javadoc {
     classpath += configurations.provided
 }
+
+task sourceJar(type: Jar, dependsOn: classes) {
+    baseName = project.name
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    baseName = project.name
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives jar
+    archives sourceJar
+    archives javadocJar
+}
+
+signing {
+    if (isReleaseVersion) {
+        sign configurations.archives
+    }
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            beforeDeployment { deployment ->
+                signing.signPom(deployment)
+            }
+
+            if (isReleaseVersion) {
+                repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2') {
+                    authentication(userName: sonatypeUsername, password: sonatypePassword)
+                }
+            } else {
+                repository(url: 'https://oss.sonatype.org/content/repositories/snapshots') {
+                    authentication(userName: sonatypeUsername, password: sonatypePassword)
+                }
+            }
+
+            pom.project {
+                groupId project.group
+                artifactId project.name
+                version project.version
+                packaging 'jar'
+                name 'Grizzly-Protobuf'
+                description "Grizzly NIO framework filters to process Google's Protocol Buffers serialized messages."
+                url 'http://github.com/novabyte/grizzly-protobuf'
+                inceptionYear '2013'
+                licenses {
+                    license {
+                        name 'The Apache Software License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        distribution 'repo'
+                    }
+                }
+                scm {
+                    url 'https://github.com/novabyte/grizzly-protobuf'
+                    connection 'scm:git://github.com/novabyte/grizzly-protobuf.git'
+                    developerConnection 'scm:git@github.com:novabyte/grizzly-protobuf.git'
+                }
+                developers {
+                    developer {
+                        id 'novabyte'
+                        name 'Chris Molozian'
+                        email 'chris@cmoz.me'
+                    }
+                }
+            }
+        }
+    }
+}
+uploadArchives.dependsOn ':build'
 
 idea {
     module {
