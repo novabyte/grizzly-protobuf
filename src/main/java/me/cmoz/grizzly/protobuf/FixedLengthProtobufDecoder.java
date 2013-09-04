@@ -16,44 +16,22 @@
 package me.cmoz.grizzly.protobuf;
 
 import com.google.protobuf.ExtensionRegistryLite;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.MessageLite;
-import org.glassfish.grizzly.AbstractTransformer;
 import org.glassfish.grizzly.Buffer;
-import org.glassfish.grizzly.TransformationException;
-import org.glassfish.grizzly.TransformationResult;
-import org.glassfish.grizzly.attributes.Attribute;
-import org.glassfish.grizzly.attributes.AttributeStorage;
-import org.glassfish.grizzly.utils.BufferInputStream;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-
-import static org.glassfish.grizzly.TransformationResult.createCompletedResult;
-import static org.glassfish.grizzly.TransformationResult.createErrorResult;
-import static org.glassfish.grizzly.TransformationResult.createIncompletedResult;
 
 /**
  * Decodes Protocol Buffers messages from the input stream using a fixed header
  * to determine the size of a message.
  */
 @Slf4j
-public class FixedLengthProtobufDecoder extends AbstractTransformer<Buffer, MessageLite> {
+public class FixedLengthProtobufDecoder extends AbstractProtobufDecoder {
 
-    /** The error code for a failed protobuf parse of a message. */
-    public static final int IO_PROTOBUF_PARSE_ERROR = 0;
-    /** The name of the decoder attribute for the size of the message. */
-    public static final String MESSAGE_LENGTH_ATTR =
-            "grizzly-protobuf-message-length";
-
-    /** The base protocol buffers serialization unit. */
-    private final MessageLite prototype;
-    /** A table of known extensions, searchable by name or field number. */
-    private final ExtensionRegistryLite extensionRegistry;
-    /** The attribute for the length of the message. */
-    private final Attribute<Integer> messageLengthAttr;
     /** The length of the fixed header storing the size of the message. */
     private final int headerLength;
 
@@ -71,72 +49,28 @@ public class FixedLengthProtobufDecoder extends AbstractTransformer<Buffer, Mess
             final @NonNull MessageLite prototype,
             final ExtensionRegistryLite extensionRegistry,
             final int headerLength) {
-        this.prototype = prototype;
-        this.extensionRegistry = extensionRegistry;
+        super(prototype, extensionRegistry);
         this.headerLength = headerLength;
-        messageLengthAttr = attributeBuilder.createAttribute(MESSAGE_LENGTH_ATTR);
     }
 
     /** {@inheritDoc} */
     @Override
-    protected TransformationResult<Buffer, MessageLite> transformImpl(
-            final AttributeStorage storage, final @NonNull Buffer input)
-            throws TransformationException {
+    public int readHeader(final Buffer input) throws IOException {
+        if (input == null) {
+            throw new IllegalArgumentException("'input' cannot be null.");
+        }
+
+        final byte[] messageLengthArr = new byte[headerLength];
+        input.get(messageLengthArr);
         log.debug("inputRemaining={}", input.remaining());
 
-        Integer messageLength = messageLengthAttr.get(storage);
-        if (messageLength == null) {
-            if (input.remaining() < headerLength) {
-                return createIncompletedResult(input);
-            }
-
-            final byte[] messageLengthArr = new byte[headerLength];
-            input.get(messageLengthArr);
-            log.debug("inputRemaining={}", input.remaining());
-
-            messageLength = ByteBuffer.wrap(messageLengthArr).getInt();
-            log.debug("messageLength={}", messageLength);
-            messageLengthAttr.set(storage, messageLength);
-        }
-
-        if (input.remaining() < messageLength) {
-            return createIncompletedResult(input);
-        }
-        log.debug("bufferRemaining={}", input.remaining());
-
-        final int position = input.position();
-        log.debug("position={}", position);
-
-        final BufferInputStream inputStream =
-                new BufferInputStream(input, position, (position + messageLength));
-        final MessageLite message;
-        try {
-            if (extensionRegistry != null) {
-                message = prototype.getParserForType()
-                        .parseFrom(inputStream, extensionRegistry);
-            } else {
-                message = prototype.getParserForType().parseFrom(inputStream);
-            }
-        } catch (final InvalidProtocolBufferException e) {
-            final String msg = "Error decoding protobuf message from input stream.";
-            log.warn(msg, e);
-            return createErrorResult(IO_PROTOBUF_PARSE_ERROR, msg);
-        }
-
-        return createCompletedResult(message, input);
+        return ByteBuffer.wrap(messageLengthArr).getInt();
     }
 
     /** {@inheritDoc} */
     @Override
     public String getName() {
         return FixedLengthProtobufDecoder.class.getName();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean hasInputRemaining(
-            final AttributeStorage storage, final Buffer input) {
-        return (input != null) && input.hasRemaining();
     }
 
 }

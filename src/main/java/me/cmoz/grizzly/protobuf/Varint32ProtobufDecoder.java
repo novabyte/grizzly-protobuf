@@ -17,14 +17,8 @@ package me.cmoz.grizzly.protobuf;
 
 import com.google.protobuf.CodedInputStream;
 import com.google.protobuf.ExtensionRegistryLite;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.MessageLite;
-import org.glassfish.grizzly.AbstractTransformer;
 import org.glassfish.grizzly.Buffer;
-import org.glassfish.grizzly.TransformationException;
-import org.glassfish.grizzly.TransformationResult;
-import org.glassfish.grizzly.attributes.Attribute;
-import org.glassfish.grizzly.attributes.AttributeStorage;
 import org.glassfish.grizzly.utils.BufferInputStream;
 
 import java.io.IOException;
@@ -32,29 +26,12 @@ import java.io.IOException;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
-import static org.glassfish.grizzly.TransformationResult.createErrorResult;
-
 /**
  * Decodes Protocol Buffers messages from the input stream using a
  * {@code Varint32} encoded header to determine message size.
  */
 @Slf4j
-public class Varint32ProtobufDecoder extends AbstractTransformer<Buffer, MessageLite> {
-
-    /** The error code for a failed protobuf parse of a message. */
-    public static final int IO_PROTOBUF_PARSE_ERROR = 0;
-    /** The error code for a malformed Varint32 header. */
-    public static final int IO_VARINT32_ENCODING_ERROR = 1;
-    /** The name of the decoder attribute for the size of the message. */
-    public static final String MESSAGE_LENGTH_ATTR =
-            "grizzly-protobuf-message-length";
-
-    /** The base protocol buffers serialization unit. */
-    private final MessageLite prototype;
-    /** A table of known extensions, searchable by name or field number. */
-    private final ExtensionRegistryLite extensionRegistry;
-    /** The attribute for the length of the message. */
-    private final Attribute<Integer> messageLengthAttr;
+public class Varint32ProtobufDecoder extends AbstractProtobufDecoder {
 
     /**
      * A protobuf decoder that uses a {@code Varint32} encoded header to
@@ -67,70 +44,24 @@ public class Varint32ProtobufDecoder extends AbstractTransformer<Buffer, Message
     public Varint32ProtobufDecoder(
             final @NonNull MessageLite prototype,
             final ExtensionRegistryLite extensionRegistry) {
-        this.prototype = prototype;
-        this.extensionRegistry = extensionRegistry;
-        messageLengthAttr = attributeBuilder.createAttribute(MESSAGE_LENGTH_ATTR);
+        super(prototype, extensionRegistry);
     }
 
     /** {@inheritDoc} */
     @Override
-    protected TransformationResult<Buffer, MessageLite> transformImpl(
-            final AttributeStorage storage, final @NonNull Buffer input)
-            throws TransformationException {
-        log.debug("inputRemaining={}", input.remaining());
+    public int readHeader(final Buffer input) throws IOException {
+        if (input == null) {
+            throw new IllegalArgumentException("'input' cannot be null.");
+        }
+
         final BufferInputStream inputStream = new BufferInputStream(input);
-
-        Integer messageLength = messageLengthAttr.get(storage);
-        if (messageLength == null) {
-            try {
-                messageLength = CodedInputStream.readRawVarint32(input.get(), inputStream);
-                log.debug("messageLength={}", messageLength);
-                messageLengthAttr.set(storage, messageLength);
-            } catch (final IOException e) {
-                final String msg = "Error finding varint32 header size.";
-                log.warn(msg, e);
-                return createErrorResult(IO_VARINT32_ENCODING_ERROR, msg);
-            }
-            log.debug("inputRemaining={}", input.remaining());
-        }
-
-        if (input.remaining() < messageLength) {
-            return TransformationResult.createIncompletedResult(input);
-        }
-
-        final MessageLite message;
-        try {
-            final byte[] buf = input.array();
-            final int pos = input.position();
-
-            if (extensionRegistry != null) {
-                message = prototype.getParserForType()
-                        .parseFrom(buf, pos, messageLength, extensionRegistry);
-            } else {
-                message = prototype.getParserForType()
-                        .parseFrom(buf, pos, messageLength);
-            }
-        } catch (final InvalidProtocolBufferException e) {
-            final String msg = "Error decoding protobuf message from input stream.";
-            log.warn(msg, e);
-            return createErrorResult(IO_PROTOBUF_PARSE_ERROR, msg);
-        }
-        log.debug("inputRemaining={}", input.remaining());
-
-        return TransformationResult.createCompletedResult(message, input);
+        return CodedInputStream.readRawVarint32(input.get(), inputStream);
     }
 
     /** {@inheritDoc} */
     @Override
     public String getName() {
         return Varint32ProtobufDecoder.class.getName();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean hasInputRemaining(
-            final AttributeStorage storage, final Buffer input) {
-        return (input != null) && input.hasRemaining();
     }
 
 }
