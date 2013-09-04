@@ -32,7 +32,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * {@link me.cmoz.grizzly.protobuf.Varint32ProtobufFilter}.
  */
-public class Varint32ProtobufEncoderTest {
+public class Varint32ProtobufFilterTest {
 
     /** The port for the local test. */
     private static final int PORT = 20389;
