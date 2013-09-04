@@ -32,7 +32,7 @@ public final class FixedLengthProtobufFilter extends AbstractCodecFilter<Buffer,
     public static final int DEFAULT_HEADER_LENGTH = 4;
 
     /**
-     * A Protocol Buffers filter that uses the {@see DEFAULT_HEADER_LENGTH} as
+     * A Protocol Buffers filter that uses the {@code DEFAULT_HEADER_LENGTH} as
      * the header length containing the size of the message.
      *
      * @param prototype The base protocol buffers serialization unit.
@@ -42,7 +42,7 @@ public final class FixedLengthProtobufFilter extends AbstractCodecFilter<Buffer,
     }
 
     /**
-     * A Protocol Buffers filter that uses the {@see DEFAULT_HEADER_LENGTH} as
+     * A Protocol Buffers filter that uses the {@code DEFAULT_HEADER_LENGTH} as
      * the header length containing the size of a message with the supplied
      * {@code extensionRegistry}.
      *
