@@ -26,7 +26,6 @@ import org.glassfish.grizzly.attributes.Attribute;
 import org.glassfish.grizzly.attributes.AttributeStorage;
 
 import java.io.IOException;
-import java.io.InputStream;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
